@@ -13,3 +13,7 @@ The application :
 
 <img width="951" height="764" alt="Screenshot 2026-03-17 201044" src="https://github.com/user-attachments/assets/6a384e1b-78fe-4db7-8045-52c76fcf7592" />
 
+4. Accepting/Rejecting requests
+
+<img width="797" height="762" alt="Screenshot 2026-03-17 201409" src="https://github.com/user-attachments/assets/c5237be2-c5fe-428d-b759-4e93834f2990" />
+
