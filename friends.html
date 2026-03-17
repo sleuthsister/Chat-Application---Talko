@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Friends</title>
+  <style>
+    body { font-family: Arial; max-width: 600px; margin: 40px auto; background: #f0ebe3; }
+    h2, h3 { color: #a0522d; }
+    .box { background: #fff8f2; padding: 20px; border-radius: 10px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+    input { padding: 8px; border: 1px solid #d4b8a0; border-radius: 4px; width: 70%; background: #fdf6f0; }
+    button { padding: 8px 16px; background: #a0522d; color: white; border: none; border-radius: 4px; cursor: pointer; }
+    button:hover { background: #8b4513; }
+    .accept { background: #6b8e5a; }
+    .accept:hover { background: #556f47; }
+    .reject { background: #b85450; margin-left: 5px; }
+    .reject:hover { background: #963f3c; }
+    .friend-item, .request-item { padding: 10px; border-bottom: 1px solid #e8d8cc; display: flex; justify-content: space-between; align-items: center; }
+    .error { color: #c0392b; font-size: 13px; }
+    .success { color: #6b8e5a; font-size: 13px; }
+    a { color: #a0522d; text-decoration: none; }
+    .nav { display: flex; justify-content: space-between; align-items: center; }
+    .logout { background: #b85450; }
+    .logout:hover { background: #963f3c; }
+    .empty { color: #b0a090; font-size: 13px; }
+    .status-pending { color: #e0a030; font-size: 13px; }
+    .status-accepted { color: #6b8e5a; font-size: 13px; }
+    .status-rejected { color: #b85450; font-size: 13px; }
+  </style>
+</head>
+<body>
+
+  <div class="nav">
+    <h2>Friends</h2>
+    <div>
+      <a href="/index.html" style="margin-right:15px;">Home</a>
+      <button class="logout" onclick="logout()">Logout</button>
+    </div>
+  </div>
+
+  <!-- Add Friend -->
+  <div class="box">
+    <h3>Add Friend</h3>
+    <input id="friendUsername" placeholder="Enter username" />
+    <button onclick="sendRequest()">Send Request</button>
+    <p id="requestMsg"></p>
+  </div>
+
+  <!-- Pending Incoming Requests -->
+  <div class="box">
+    <h3>Incoming Requests</h3>
+    <div id="pendingList"><p class="empty">Loading...</p></div>
+  </div>
+
+  <!-- Sent Requests -->
+  <div class="box">
+    <h3>Sent Requests</h3>
+    <div id="sentList"><p class="empty">Loading...</p></div>
+  </div>
+
+  <!-- Friends List -->
+  <div class="box">
+    <h3>My Friends</h3>
+    <div id="friendsList"><p class="empty">Loading...</p></div>
+  </div>
+
+  <script>
+    async function checkLogin() {
+      const res = await fetch('/api/auth/me');
+      if (!res.ok) window.location.href = '/login.html';
+    }
+
+    async function sendRequest() {
+      const username = document.getElementById('friendUsername').value.trim();
+      if (!username) return;
+
+      const res = await fetch('/api/friends/request', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username })
+      });
+
+      const data = await res.json();
+      const msg = document.getElementById('requestMsg');
+      msg.className = res.ok ? 'success' : 'error';
+      msg.textContent = res.ok ? data.message : data.error;
+      if (res.ok) {
+        document.getElementById('friendUsername').value = '';
+        loadSent();
+      }
+    }
+
+    async function loadPending() {
+      const res = await fetch('/api/friends/pending');
+      const requests = await res.json();
+      const div = document.getElementById('pendingList');
+
+      if (!requests.length) {
+        div.innerHTML = '<p class="empty">No incoming requests</p>';
+        return;
+      }
+
+      div.innerHTML = requests.map(r => `
+        <div class="request-item">
+          <span>${r.sender.username}</span>
+          <div>
+            <button class="accept" onclick="acceptRequest(${r.id})">Accept</button>
+            <button class="reject" onclick="rejectRequest(${r.id})">Reject</button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    async function loadSent() {
+      const res = await fetch('/api/friends/sent');
+      const requests = await res.json();
+      const div = document.getElementById('sentList');
+
+      if (!requests.length) {
+        div.innerHTML = '<p class="empty">No sent requests</p>';
+        return;
+      }
+
+      div.innerHTML = requests.map(r => `
+        <div class="request-item">
+          <span>${r.receiver.username}</span>
+          <span class="status-${r.status.toLowerCase()}">${r.status}</span>
+        </div>
+      `).join('');
+    }
+
+    async function loadFriends() {
+      const res = await fetch('/api/friends/list');
+      const friends = await res.json();
+      const div = document.getElementById('friendsList');
+
+      if (!friends.length) {
+        div.innerHTML = '<p class="empty">No friends yet</p>';
+        return;
+      }
+
+      div.innerHTML = friends.map(f => `
+        <div class="friend-item">
+          <span>${f.receiver.username}</span>
+          <a href="/index.html?friend=${f.receiver.username}">Chat</a>
+        </div>
+      `).join('');
+    }
+
+    async function acceptRequest(id) {
+      await fetch(`/api/friends/accept/${id}`, { method: 'POST' });
+      loadPending();
+      loadFriends();
+    }
+
+    async function rejectRequest(id) {
+      await fetch(`/api/friends/reject/${id}`, { method: 'POST' });
+      loadPending();
+    }
+
+    async function logout() {
+      await fetch('/api/auth/logout', { method: 'POST' });
+      window.location.href = '/login.html';
+    }
+
+    checkLogin();
+    loadPending();
+    loadSent();
+    loadFriends();
+  </script>
+</body>
+</html>
